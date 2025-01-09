@@ -94,3 +94,68 @@ db.Salad.insertOne({
     type: "Vegetable",
     vegetable: spinach_Id
 });
+
+
+// Example of displaying relation between two collections
+use("mongo-test");
+// Step 1: Create and insert documents into the Student collection
+db.Student.insertMany([
+  { name: "Aman", department: "Computer Science", subject: "Databases", grade: "A" },
+  { name: "Naman", department: "Computer Science", subject: "Databases", grade: "B" },
+  { name: "Roman", department: "Computer Science", subject: "AI", grade: "A" },
+  { name: "suman", department: "Mathematics", subject: "Statistics", grade: "A" },
+  { name: "Raman", department: "Mathematics", subject: "Statistics", grade: "B" }
+]);
+
+print("Student collection created and data inserted.");
+
+// Step 2: Create and insert documents into the Instructor collection
+db.Instructor.insertMany([
+  { name: "Dr. Smith", department: "Computer Science", subject: "Databases" },
+  { name: "Dr. Johnson", department: "Computer Science", subject: "AI" },
+  { name: "Dr. Brown", department: "Mathematics", subject: "Statistics" }
+]);
+
+print("Instructor collection created and data inserted.");
+
+// Step 3: Create the Student_Instructor_Assignment collection
+db.createCollection("Student_Instructor_Assignment");
+
+print("Student_Instructor_Assignment collection created.");
+
+// Step 4: Group students and instructors based on the same department and subject
+
+// Iterate over each unique (department, subject) combination in the Student collection
+db.Student.aggregate([
+  {
+      $group: {
+          _id: { department: "$department", subject: "$subject" },
+          students: { $push: { name: "$name", grade: "$grade" } }
+      }
+  }
+]).forEach(function(groupedStudents) {
+  // Find the instructor for the same department and subject
+  let instructor = db.Instructor.findOne({
+      department: groupedStudents._id.department,
+      subject: groupedStudents._id.subject
+  });
+
+  if (instructor) {
+      db.Student_Instructor_Assignment.insertOne({
+          department: groupedStudents._id.department,
+          subject: groupedStudents._id.subject,
+          students: groupedStudents.students,
+          instructor: { name: instructor.name }
+      });
+
+      print(`Group for department '${groupedStudents._id.department}' and subject '${groupedStudents._id.subject}' added.`);
+  } else {
+      print(`No instructor found for department '${groupedStudents._id.department}' and subject '${groupedStudents._id.subject}'.`);
+  }
+});
+
+
+db.Student_Instructor_Assignment.find().forEach(doc => {
+  printjson(doc);
+});
+
